@@ -26,30 +26,30 @@ jobs:
 
       - name: Run Checkov on VPC module
         run: |
-          checkov -d ./modules/vpc --framework terraform | grep PASSED
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/vpc --framework terraform | grep PASSED
           echo "VPC module scanned."
         continue-on-error: true
 
       - name: Run Checkov on Route Table module
         run: |
-          checkov -d ./modules/route_table --framework terraform | grep PASSED
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/route_table --framework terraform | grep PASSED
           echo "Route Table module scanned."
         continue-on-error: true
 
       - name: Run Checkov on NAT Gateway module
         run: |
-          checkov -d ./modules/nat_gateway --framework terraform | grep PASSED
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/nat_gateway --framework terraform | grep PASSED
           echo "NAT Gateway module scanned."
         continue-on-error: true
 
       - name: Run Checkov on Security Group module
         run: |
-          checkov -d ./modules/security_group --framework terraform | grep PASSED
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/security_group --framework terraform | grep PASSED
           echo "Security Group module scanned."
         continue-on-error: true
 
       - name: Run Checkov on EC2 module | grep PASSED
         run: |
-          checkov -d ./modules/ec2 --framework terraform
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/ec2 --framework terraform
           echo "EC2 module scanned."
         continue-on-error: true
