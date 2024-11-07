@@ -1,0 +1,50 @@
+name: Checkov Scan
+
+on:
+  push:
+    branches:
+      - add-checkov
+  pull_request:
+    branches:
+      - add-checkov
+
+jobs:
+  checkov:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov on VPC module
+        run: |
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/vpc --framework terraform
+          echo "VPC module scanned."
+
+      - name: Run Checkov on Route Table module
+        run: |
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/route_table --framework terraform
+          echo "Route Table module scanned."
+
+      - name: Run Checkov on NAT Gateway module
+        run: |
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/nat_gateway --framework terraform
+          echo "NAT Gateway module scanned."
+
+      - name: Run Checkov on Security Group module
+        run: |
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/security_group --framework terraform
+          echo "Security Group module scanned."
+
+      - name: Run Checkov on EC2 module
+        run: |
+          checkov -d ./NT548.P11_Lab2/Terraform/modules/ec2 --framework terraform
+          echo "EC2 module scanned."
