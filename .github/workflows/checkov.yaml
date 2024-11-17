@@ -84,6 +84,6 @@ jobs:
       - name: Run Checkov on EC2 module | grep PASSED
         run: |
           checkov -d ./NT548.P11_Lab2/Terraform/modules/ec2 --framework terraform
-          echo "EC2 module scanned."
+          echo "EC2 module scaned."
         continue-on-error: true
 
