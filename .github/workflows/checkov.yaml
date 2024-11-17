@@ -1,12 +1,6 @@
 name: Terraform Deployment with Checkov
 
-on:
-  push:
-    branches:
-      - add-checkov
-  pull_request:
-    branches:
-      - add-checkov
+on: workflow_dispatch
 
 jobs:
   terraform:
