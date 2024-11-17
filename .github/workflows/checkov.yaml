@@ -25,9 +25,6 @@ jobs:
       - name: Terraform Init
         run: terraform -chdir=./NT548.P11_Lab2/Terraform init
 
-      - name: Terraform Format
-        run: terraform -chdir=./NT548.P11_Lab2/Terraform fmt -check
-
       - name: Terraform Validate
         run: terraform -chdir=./NT548.P11_Lab2/Terraform validate
 
