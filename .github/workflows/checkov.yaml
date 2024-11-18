@@ -32,8 +32,11 @@ jobs:
       - name: Terraform Plan
         run: terraform -chdir=./NT548.P11_Lab2/Terraform plan -out=tfplan
 
+      # - name: Terraform Apply
+      #   if: github.event_name == 'push'
+      #   run: terraform -chdir=./NT548.P11_Lab2/Terraform apply -auto-approve tfplan
+
       - name: Terraform Apply
-        if: github.event_name == 'push'
         run: terraform -chdir=./NT548.P11_Lab2/Terraform apply -auto-approve tfplan
 
   checkov:
