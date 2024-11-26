@@ -12,6 +12,10 @@ tests:
       UniqueName: test
       KeyName: demo1
       AllowedSSHIP: 14.187.92.162/32
+      EnvironmentName: TestEnvironment
+      VpcCIDR: 10.0.0.0/16
+      PublicSubnetCIDR: 10.0.0.0/24
+      PrivateSubnetCIDR: 10.0.1.0/24
     regions:
       - us-east-1
     tags:
