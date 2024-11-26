@@ -1,155 +1,212 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: "Main template to call nested stacks for VPC, Route Table, and NAT Gateway"
+AWSTemplateFormatVersion: 2010-09-09
+Description: Using Cloudformation to manage and deploy the AWS Infrastructure
 
 Parameters:
-  UniqueName:
-    Description: Give a unique name for "Lab1" tag value
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
     Type: String
-    Default: Lab1_NT548
-
-  VpcCidr:
+    #AllowedPattern: '[A-Za-z0-9-]+'
+  VpcCIDR: 
+    Description: Please enter the IP range (CIDR notation) for this VPC
     Type: String
-    Default: 10.192.0.0/16
-    Description: "CIDR notation for VPC"
-
-  InstanceType:
-    Description: EC2 instance type
+    Default: 10.0.0.0/16
+  PublicSubnetCIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the Availability Zone
     Type: String
-    AllowedValues:
-      - t2.nano
-      - t2.micro
-      - t2.small
-      - t2.medium
-      - t2.large
-      - t2.xlarge
-      - t2.2xlarge
-    Default: t2.micro
-    ConstraintDescription: must be a valid EC2 instance type.
-
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
-    Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
-    Default: "lab1test"
-
-  LatestAmiId:
+    Default: 10.0.0.0/24
+  PrivateSubnetCIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the Availability Zone
     Type: String
-    Default: "ami-089f365c7b6a04f00"
-
-  PublicSubnetCidr:
-    Type: String
-    Default: 10.192.1.0/24
-    Description: "CIDR for Public Subnet"
-
-  PrivateSubnetCidr:
-    Type: String
-    Default: 10.192.2.0/24
-    Description: "CIDR for Private Subnet"
-
-  AvailabilityZone:
-    Type: String
-    Default: "us-east-1a"
-    Description: "Region of Subnet"
-
-  AllowedSSHIP:
-    Type: String
-    Description: CIDR block for SSH access to Public EC2 Instance.  
+    Default: 10.0.1.0/24
 
 Resources:
-  # Nested Stack for VPC
-  VPCStack:
-    Type: AWS::CloudFormation::Stack
+#####Create VPC#####
+  MyVPC:
+    Type: AWS::EC2::VPC
     Properties:
-      TemplateURL: "https://my-bucket-nt548-group15.s3.amazonaws.com/vpc.yaml"
-      Parameters:
-        UniqueName: !Ref UniqueName
-        VpcCidr: !Ref VpcCidr
-        PublicSubnetCidr: !Ref PublicSubnetCidr
-        PrivateSubnetCidr: !Ref PrivateSubnetCidr
-        AvailabilityZone: !Ref AvailabilityZone
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
 
-  # Nested Stack for Route Table
-  RouteTableStack:
-    Type: AWS::CloudFormation::Stack
+##### Default Security Group for VPC #####
+  DefaultSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      TemplateURL: "https://my-bucket-nt548-group15.s3.amazonaws.com/route_table.yaml"
-      Parameters:
-        InternetGatewayId: !GetAtt VPCStack.Outputs.InternetGatewayId
-        VpcId: !GetAtt VPCStack.Outputs.VPCID
-        PublicSubnetID: !GetAtt VPCStack.Outputs.PublicSubnetID
-        PrivateSubnetID: !GetAtt VPCStack.Outputs.PrivateSubnetID
-        NATGatewayId: !GetAtt NATGatewayStack.Outputs.NatGatewayId
-        UniqueName: !Ref UniqueName
-    # DependsOn: 
-    # - NATGatewayStack  # Đảm bảo NAT Gateway Stack được tạo trước
-    
-  # Nested Stack for NAT Gateway
-  NATGatewayStack:
-    Type: AWS::CloudFormation::Stack
+      GroupDescription: Default security group for the VPC
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.0.0.0/16
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Default-SG"]]
+
+
+#####Public Subnet#####
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
     Properties:
-      TemplateURL: "https://my-bucket-nt548-group15.s3.amazonaws.com/nat_gateway.yaml"
-      Parameters:
-        PublicSubnetID: !GetAtt VPCStack.Outputs.PublicSubnetID  # Tham chiếu đến output đúng
-        VPCID: !GetAtt VPCStack.Outputs.VPCID  # Tham chiếu đến output đúng
+      AvailabilityZone: 
+        Fn::Select: 
+        - 0
+        - Fn::GetAZs: ""
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pub-SubNet"]]
 
-  # Nested Stack for EC2 instances
-  EC2InstancesStack:
-    Type: AWS::CloudFormation::Stack
+#####Private Subnet#####
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
     Properties:
-      TemplateURL: "https://my-bucket-nt548-group15.s3.amazonaws.com/ec2.yaml"
-      Parameters:
-        InstanceType: !Ref InstanceType
-        KeyName: !Ref KeyName
-        LatestAmiId: !Ref LatestAmiId
-        PrivateSubnetId: !GetAtt VPCStack.Outputs.PrivateSubnetID
-        PublicSubnetId: !GetAtt VPCStack.Outputs.PublicSubnetID
-        PrivateSecurityGroupId: !GetAtt SecurityGroupStack.Outputs.PrivateSecurityGroupId
-        PublicSecurityGroupId: !GetAtt SecurityGroupStack.Outputs.PublicSecurityGroupId            
-    # DependsOn: 
-    #   - SecurityGroupStack
-  
-  SecurityGroupStack:
-    Type: AWS::CloudFormation::Stack
+      AvailabilityZone: 
+        Fn::Select: 
+        - 0
+        - Fn::GetAZs: ""
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PrivateSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pri-SubNet"]]
+
+#####Create Internet Gateway######
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: MyVPC 
     Properties:
-      TemplateURL: "https://my-bucket-nt548-group15.s3.amazonaws.com/security_groups.yaml"
-      Parameters:
-        VpcId: !GetAtt VPCStack.Outputs.VPCID
-        AllowedSSHIP: !Ref AllowedSSHIP
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-IGW"]]
 
-Outputs:
-  VPCID:
-    Description: "VPC ID from VPCStack"
-    Value: !GetAtt VPCStack.Outputs.VPCID  # Tham chiếu đến output đúng
+#####Attach Internet Gateway to VPC#####
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
 
-  PublicSubnetID:
-    Description: "Public Subnet ID from VPCStack"
-    Value: !GetAtt VPCStack.Outputs.PublicSubnetID  # Tham chiếu đến output đúng
+#####Create NAT Gateway#####
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-NGW-EIP"]]                    
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      Tags: 
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-NGW"]]
 
-  PrivateSubnetID:
-    Description: "Private Subnet ID from VPCStack"
-    Value: !GetAtt VPCStack.Outputs.PrivateSubnetID  # Tham chiếu đến output đúng
+#####Create Public Route Table#####
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags: 
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pub-RTB"]]
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
 
-  PublicRouteTableId:
-    Value: !GetAtt RouteTableStack.Outputs.PublicRouteTableId
+#####Create Private Route Table#####
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags: 
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pri-RTB"]]
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
 
-  PrivateRouteTableId:
-    Value: !GetAtt RouteTableStack.Outputs.PrivateRouteTableId
-  
-  NatGatewayId:
-    Value: !GetAtt NATGatewayStack.Outputs.NatGatewayId
-  
-  PublicEC2InstanceId:
-    Description: ID of Public EC2 Instances
-    Value: !GetAtt EC2InstancesStack.Outputs.PublicEC2InstanceId
-  
-  PrivateEC2InstanceId:
-    Description: ID of Private EC2 Instances
-    Value: !GetAtt EC2InstancesStack.Outputs.PrivateEC2InstanceId
+#####Security Group for EC2 Public Instance#####
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access to Public EC2
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp:  123.250.165.100/32 # User's IP
+      Tags: 
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pub-SecGr"]]
 
-  PublicSecurityGroupId:
-    Description: ID of the Security Group for Public EC2 Instance
-    Value: !GetAtt SecurityGroupStack.Outputs.PublicSecurityGroupId
+#####Security Group for EC2 Private Instance#####
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH from Public EC2
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicSecurityGroup
+      Tags: 
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pri-SecGr"]]
 
-  PrivateSecurityGroupId:
-    Description: ID of the Security Group for Private EC2 Instance
-    Value: !GetAtt SecurityGroupStack.Outputs.PublicSecurityGroupId
+#####Create EC2 for Public Instance#####
+  myEC2InstancePublic:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      InstanceType: t2.micro #Change another type if you want
+      SecurityGroupIds:
+        - !Ref PublicSecurityGroup
+      ImageId: ami-0866a3c8686eaeeba #Insert your ID
+      Tags: 
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pub-EC2"]]
+
+#####Create EC2 for Private Instance#####
+  myEC2InstancePrivate:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      InstanceType: t2.micro #Insert your type
+      SecurityGroupIds:
+        - !Ref PrivateSecurityGroup
+      ImageId: ami-0866a3c8686eaeeba #Insert your ID
+      Tags: 
+        - Key: Name
+          Value: !Join ['', [!Ref "AWS::StackName", "-Pri-EC2"]]
